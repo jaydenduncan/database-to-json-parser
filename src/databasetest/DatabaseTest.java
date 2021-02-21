@@ -2,6 +2,7 @@ package databasetest;
 
 import java.sql.*;
 import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
 
 public class DatabaseTest {
     
@@ -9,181 +10,122 @@ public class DatabaseTest {
         JSONArray jsonArray = new JSONArray();
         
         //INSERT YOUR CODE HERE
-        
-        
-        return jsonArray;
-    }
-
-    public static void main(String[] args) {
-        
         Connection conn = null;
-        PreparedStatement pstSelect = null, pstUpdate = null;
+        PreparedStatement pstSelect = null;
         ResultSet resultset = null;
         ResultSetMetaData metadata = null;
         
         String query, key, value;
-        String newFirstName = "Alfred", newLastName = "Neuman";
-        
         boolean hasresults;
         int resultCount, columnCount, updateCount = 0;
         
-        try {
-            
-            /* Identify the Server */
-            
-            String server = ("jdbc:mysql://localhost/db_test");
+        try{
+            // Identify Server
+            String server = ("jdbc:mysql://localhost/p2_test");
             String username = "root";
             String password = "CS488";
-            System.out.println("Connecting to " + server + "...");
+            //System.out.println("Connecting to " + server + "...");
             
-            /* Load the MySQL JDBC Driver */
-            
+            // Load MySQL JDBC Driver
             Class.forName("com.mysql.jdbc.Driver").newInstance();
             
-            /* Open Connection */
-
+            // Open Connection
             conn = DriverManager.getConnection(server, username, password);
-
-            /* Test Connection */
             
-            if (conn.isValid(0)) {
-                
-                /* Connection Open! */
-                
-                System.out.println("Connected Successfully!");
-                
-                // Prepare Update Query
-                
-                query = "INSERT INTO people (firstname, lastname) VALUES (?, ?)";
-                pstUpdate = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-                pstUpdate.setString(1, newFirstName);
-                pstUpdate.setString(2, newLastName);
-                
-                // Execute Update Query
-                
-                updateCount = pstUpdate.executeUpdate();
-                
-                // Get New Key; Print To Console
-                
-                if (updateCount > 0) {
-            
-                    resultset = pstUpdate.getGeneratedKeys();
-
-                    if (resultset.next()) {
-
-                        System.out.print("Update Successful!  New Key: ");
-                        System.out.println(resultset.getInt(1));
-
-                    }
-
-                }
-                
-                
-                /* Prepare Select Query */
+            if(conn.isValid(0)){
+                //System.out.println("Connected Successfully!");
                 
                 query = "SELECT * FROM people";
                 pstSelect = conn.prepareStatement(query);
                 
-                /* Execute Select Query */
+                //System.out.println("Submitting query...");
                 
-                System.out.println("Submitting Query ...");
+                hasresults = pstSelect.execute();
                 
-                hasresults = pstSelect.execute();                
+                //System.out.println("Getting results...");
                 
-                /* Get Results */
-                
-                System.out.println("Getting Results ...");
-                
-                while ( hasresults || pstSelect.getUpdateCount() != -1 ) {
-
-                    if ( hasresults ) {
-                        
-                        /* Get ResultSet Metadata */
-                        
+                while ( hasresults || pstSelect.getUpdateCount() != -1 ){
+                    
+                    if(hasresults){
+                        // Get ResultSet MetaData
                         resultset = pstSelect.getResultSet();
                         metadata = resultset.getMetaData();
                         columnCount = metadata.getColumnCount();
                         
-                        /* Get Column Names; Print as Table Header */
-                        
-                        for (int i = 1; i <= columnCount; i++) {
-
-                            key = metadata.getColumnLabel(i);
-
-                            System.out.format("%20s", key);
-
+                        String[] columnNames = new String[columnCount];
+                        // Get Column Names and Print as Table Header
+                        for (int i = 2; i <= columnCount; i++) {
+                            columnNames[i-2] = metadata.getColumnLabel(i);
+                            
+                            //key = metadata.getColumnLabel(i);
+                            //System.out.format("%30s", key);
                         }
                         
-                        /* Get Data; Print as Table Rows */
-                        
-                        while(resultset.next()) {
+                        // Get data and print as table rows
+                        while(resultset.next()){
+                            //System.out.println();
                             
-                            /* Begin Next ResultSet Row */
-
-                            System.out.println();
+                            //Loop through ResultSet Columns and Print Values
+                            JSONObject jsonObject = new JSONObject();
                             
-                            /* Loop Through ResultSet Columns; Print Values */
-
-                            for (int i = 1; i <= columnCount; i++) {
-
+                            for (int i = 2; i <= columnCount; i++) {
                                 value = resultset.getString(i);
-
+                                
+                                jsonObject.put(columnNames[i-2], value);
+                                
+                                
+                                /*
                                 if (resultset.wasNull()) {
-                                    System.out.format("%20s", "NULL");
+                                    System.out.format("%30s", "NULL");
                                 }
-
                                 else {
-                                    System.out.format("%20s", value);
+                                    System.out.format("%30s", value);
                                 }
-
+                                */
                             }
-
+                            
+                            jsonArray.add(jsonObject);
+                            
+                            
                         }
-                        
                     }
-
                     else {
-
                         resultCount = pstSelect.getUpdateCount();  
 
                         if ( resultCount == -1 ) {
                             break;
                         }
-
                     }
                     
-                    /* Check for More Data */
-
+                    // Check for more data
                     hasresults = pstSelect.getMoreResults();
-
                 }
-                
             }
             
-            System.out.println();
+            //System.out.println();
             
-            /* Close Database Connection */
-            
+            // Close the database connection
             conn.close();
-            
         }
-        
-        catch (Exception e) {
+        catch(Exception e){
             System.err.println(e.toString());
         }
-        
-        /* Close Other Database Objects */
-        
-        finally {
-            
+        finally { 
             if (resultset != null) { try { resultset.close(); resultset = null; } catch (Exception e) {} }
             
             if (pstSelect != null) { try { pstSelect.close(); pstSelect = null; } catch (Exception e) {} }
             
-            if (pstUpdate != null) { try { pstUpdate.close(); pstUpdate = null; } catch (Exception e) {} }
-            
+            // if (pstUpdate != null) { try { pstUpdate.close(); pstUpdate = null; } catch (Exception e) {} } 
         }
         
+        //System.out.println();
+        System.out.println(jsonArray.toString());
+        
+        return jsonArray;
+    }
+
+    public static void main(String[] args) {
+        getJSONData();
     }
     
 }
